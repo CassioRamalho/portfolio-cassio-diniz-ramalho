@@ -1,7 +1,13 @@
 const navToggle = document.querySelector(".nav-toggle");
 const siteNav = document.querySelector(".site-nav");
+const siteHeader = document.querySelector(".site-header");
 
 if (navToggle && siteNav) {
+  const closeMenu = () => {
+    navToggle.setAttribute("aria-expanded", "false");
+    siteNav.classList.remove("is-open");
+  };
+
   navToggle.addEventListener("click", () => {
     const isOpen = navToggle.getAttribute("aria-expanded") === "true";
     navToggle.setAttribute("aria-expanded", String(!isOpen));
@@ -9,11 +15,23 @@ if (navToggle && siteNav) {
   });
 
   siteNav.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => {
-      navToggle.setAttribute("aria-expanded", "false");
-      siteNav.classList.remove("is-open");
-    });
+    link.addEventListener("click", closeMenu);
   });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMenu();
+    }
+  });
+}
+
+if (siteHeader) {
+  const syncHeaderState = () => {
+    siteHeader.classList.toggle("is-scrolled", window.scrollY > 12);
+  };
+
+  syncHeaderState();
+  window.addEventListener("scroll", syncHeaderState, { passive: true });
 }
 
 const revealItems = document.querySelectorAll(".reveal");
@@ -47,6 +65,7 @@ carousels.forEach((carousel) => {
   const prevButton = carousel.querySelector('[data-direction="-1"]');
   const nextButton = carousel.querySelector('[data-direction="1"]');
   let currentIndex = slides.findIndex((slide) => slide.classList.contains("is-active"));
+  let autoRotateId = null;
 
   if (currentIndex < 0) {
     currentIndex = 0;
@@ -64,10 +83,45 @@ carousels.forEach((carousel) => {
     dots[currentIndex]?.classList.add("is-active");
   };
 
-  prevButton?.addEventListener("click", () => setSlide(currentIndex - 1));
-  nextButton?.addEventListener("click", () => setSlide(currentIndex + 1));
+  const startAutoRotate = () => {
+    if (slides.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    stopAutoRotate();
+    autoRotateId = window.setInterval(() => {
+      setSlide(currentIndex + 1);
+    }, 5500);
+  };
+
+  const stopAutoRotate = () => {
+    if (autoRotateId) {
+      window.clearInterval(autoRotateId);
+      autoRotateId = null;
+    }
+  };
+
+  prevButton?.addEventListener("click", () => {
+    setSlide(currentIndex - 1);
+    startAutoRotate();
+  });
+
+  nextButton?.addEventListener("click", () => {
+    setSlide(currentIndex + 1);
+    startAutoRotate();
+  });
 
   dots.forEach((dot, index) => {
-    dot.addEventListener("click", () => setSlide(index));
+    dot.addEventListener("click", () => {
+      setSlide(index);
+      startAutoRotate();
+    });
   });
+
+  carousel.addEventListener("mouseenter", stopAutoRotate);
+  carousel.addEventListener("mouseleave", startAutoRotate);
+  carousel.addEventListener("focusin", stopAutoRotate);
+  carousel.addEventListener("focusout", startAutoRotate);
+
+  startAutoRotate();
 });
